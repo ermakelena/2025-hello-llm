@@ -4,6 +4,7 @@ Laboratory work.
 Working with Large Language Models.
 """
 from pathlib import Path
+
 # pylint: disable=too-few-public-methods, undefined-variable, too-many-arguments, super-init-not-called
 from typing import Iterable, Sequence
 
@@ -12,6 +13,8 @@ import torch
 from datasets import load_dataset
 from pandas import DataFrame
 from torch.utils.data import Dataset
+from torchinfo import summary
+from transformers import AutoModelForSeq2SeqLM, T5TokenizerFast
 
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
 from core_utils.llm.metrics import Metrics
@@ -19,6 +22,7 @@ from core_utils.llm.raw_data_importer import AbstractRawDataImporter
 from core_utils.llm.raw_data_preprocessor import AbstractRawDataPreprocessor
 from core_utils.llm.task_evaluator import AbstractTaskEvaluator
 from core_utils.llm.time_decorator import report_time
+
 
 class RawDataImporter(AbstractRawDataImporter):
     """
@@ -104,6 +108,8 @@ class TaskDataset(Dataset):
             data (pandas.DataFrame): Original data
         """
 
+        self._data = data
+
     def __len__(self) -> int:
         """
         Return the number of items in the dataset.
@@ -111,6 +117,8 @@ class TaskDataset(Dataset):
         Returns:
             int: The number of items in the dataset
         """
+
+        return len(self._data)
 
     def __getitem__(self, index: int) -> tuple[str, ...]:
         """
@@ -123,6 +131,8 @@ class TaskDataset(Dataset):
             tuple[str, ...]: The item to be received
         """
 
+        return tuple(self._data.iloc[index])
+
     @property
     def data(self) -> DataFrame:
         """
@@ -131,6 +141,8 @@ class TaskDataset(Dataset):
         Returns:
             pandas.DataFrame: Preprocessed DataFrame
         """
+
+        return self._data
 
 
 class LLMPipeline(AbstractLLMPipeline):
@@ -152,6 +164,14 @@ class LLMPipeline(AbstractLLMPipeline):
             device (str): The device for inference
         """
 
+        self._model_name = model_name
+        self._model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
+        self._tokenizer = T5TokenizerFast.from_pretrained(model_name)
+        self._dataset = dataset
+        self._max_length = max_length
+        self._batch_size = batch_size
+        self._device = device
+
     def analyze_model(self) -> dict:
         """
         Analyze model computing properties.
@@ -159,6 +179,23 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             dict: Properties of a model
         """
+
+        model_summary = summary(
+            self._model,
+            input_size=(1, self._max_length)
+        )
+
+        return {
+            "input_shape": list(model_summary.input_size),
+            "embedding_size": self._model.config.d_model,
+            "output_shape": list(model_summary.summary_list[-1].output_size),
+            "num_trainable_params": model_summary.trainable_params,
+            "vocab_size": self._model.config.vocab_size,
+            "size": sum(p.numel() for p in self._model.parameters()),
+            "max_context_length": self._model.config.n_positions
+        }
+
+
 
     @report_time
     def infer_sample(self, sample: tuple[str, ...]) -> str | None:
@@ -171,6 +208,23 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             str | None: A prediction
         """
+
+        if self._model is None or self._tokenizer is None:
+            return None
+
+        if not sample:
+            return None
+
+        input_text = sample[0]
+
+        inputs = self._tokenizer(input_text, return_tensors="pt")
+        inputs = {key: value.to(self._device) for key, value in inputs.items()}
+
+        with torch.no_grad():
+            generated_ids = self._model.generate(**inputs, max_length=self._max_length)
+
+        return self._tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+
 
     @report_time
     def infer_dataset(self) -> pd.DataFrame:
