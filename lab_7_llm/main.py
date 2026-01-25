@@ -179,23 +179,37 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             dict: Properties of a model
         """
-
         model_summary = summary(
-            self._model,
-            input_size=(1, self._max_length),
-            dtypes=torch.long,
-            verbose=0
-        )
+        self._model,
+        input_size=(self._batch_size, self._max_length),
+        col_names=["input_size", "output_size", "num_params", "mult_adds"],
+        verbose=0
+    )
+
+        # Extract required fields from ModelStatistics
+        input_size = model_summary.input_size
+        summary_list = model_summary.summary_list
+        trainable_params = model_summary.trainable_params
+        total_param_bytes = model_summary.total_param_bytes
+
+        # Compute derived properties
+        input_shape = input_size[0]  # [batch_size, max_length]
+        output_shape = summary_list[-1].output_size if summary_list else [1, self._max_length, self._tokenizer.vocab_size]
+        num_trainable_params = trainable_params.numel()
+        vocab_size = self._tokenizer.vocab_size
+        size = total_param_bytes // 4  # Assuming float32 parameters
+        max_context_length = self._max_length
+        embedding_size = self._model.config.d_model if hasattr(self._model.config, 'd_model') else 512
 
         return {
-            "input_shape": list(model_summary.input_size),
-            "embedding_size": self._model.config.d_model,
-            "output_shape": [1, self._max_length, self._model.config.vocab_size],
-            "num_trainable_params": model_summary.trainable_params,
-            "vocab_size": self._model.config.vocab_size,
-            "size": sum(p.numel() for p in self._model.parameters()),
-            "max_context_length": self._model.config.n_positions
-        }
+        "input_shape": input_shape,
+        "embedding_size": embedding_size,
+        "output_shape": output_shape,
+        "num_trainable_params": num_trainable_params,
+        "vocab_size": vocab_size,
+        "size": size,
+        "max_context_length": max_context_length
+    }
 
 
 
