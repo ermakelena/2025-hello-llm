@@ -182,13 +182,15 @@ class LLMPipeline(AbstractLLMPipeline):
 
         model_summary = summary(
             self._model,
-            input_size=(1, self._max_length)
+            input_size=(1, self._max_length),
+            dtypes=torch.long,
+            verbose=0
         )
 
         return {
             "input_shape": list(model_summary.input_size),
             "embedding_size": self._model.config.d_model,
-            "output_shape": list(model_summary.summary_list[-1].output_size),
+            "output_shape": [1, self._max_length, self._model.config.vocab_size],
             "num_trainable_params": model_summary.trainable_params,
             "vocab_size": self._model.config.vocab_size,
             "size": sum(p.numel() for p in self._model.parameters()),
