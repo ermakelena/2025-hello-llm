@@ -182,34 +182,27 @@ class LLMPipeline(AbstractLLMPipeline):
         model_summary = summary(
         self._model,
         input_size=(self._batch_size, self._max_length),
-        col_names=["input_size", "output_size", "num_params", "mult_adds"],
+        device=self._device,
         verbose=0
-    )
+        )
 
         # Extract required fields from ModelStatistics
-        input_size = model_summary.input_size
-        summary_list = model_summary.summary_list
-        trainable_params = model_summary.trainable_params
-        total_param_bytes = model_summary.total_param_bytes
+        input_size = model_summary.input_size[0]  # tuple(batch_size, seq_len)
+        trainable_params_count = model_summary.trainable_params.numel()
 
-        # Compute derived properties
-        input_shape = input_size[0]  # [batch_size, max_length]
-        output_shape = summary_list[-1].output_size if summary_list else [1, self._max_length, self._tokenizer.vocab_size]
-        num_trainable_params = trainable_params.numel()
-        vocab_size = self._tokenizer.vocab_size
-        size = total_param_bytes // 4  # Assuming float32 parameters
-        max_context_length = self._max_length
-        embedding_size = self._model.config.d_model if hasattr(self._model.config, 'd_model') else 512
+        # Extract T5-specific properties from model config and tokenizer
+        config = self._model.config
+        tokenizer_config = self._tokenizer
 
         return {
-        "input_shape": input_shape,
-        "embedding_size": embedding_size,
-        "output_shape": output_shape,
-        "num_trainable_params": num_trainable_params,
-        "vocab_size": vocab_size,
-        "size": size,
-        "max_context_length": max_context_length
-    }
+            "input_shape": list(input_size),  # [batch_size, max_length]
+            "embedding_size": config.d_model,  # 768 for T5
+            "output_shape": [self._batch_size, self._max_length, tokenizer_config.vocab_size],
+            "num_trainable_params": trainable_params_count,
+            "vocab_size": tokenizer_config.vocab_size,  # 32128 for T5
+            "size": model_summary.total_params,  # Total parameters
+            "max_context_length": self._max_length
+        }
 
 
 
