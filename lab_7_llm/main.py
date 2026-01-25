@@ -59,24 +59,13 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
 
         dataset_copy = self._raw_data.copy().dropna()
 
-        source_columns = ['text', 'summary', 'title']
-        all_lengths = [
-            length
-            for col in source_columns
-            if col in dataset_copy.columns
-            for length in dataset_copy[col].astype(str).str.len()
-        ]
-
-        dataset_sample_min_len = int(min(all_lengths)) if all_lengths else 0
-        dataset_sample_max_len = int(max(all_lengths)) if all_lengths else 0
-
         return {
             "dataset_number_of_samples": len(self._raw_data),
             "dataset_columns": len(self._raw_data.columns),
             "dataset_duplicates": int(self._raw_data.duplicated().sum()),
             "dataset_empty_rows": self._raw_data.isna().any(axis=1).sum(),
-            "dataset_sample_min_len": dataset_sample_min_len,
-            "dataset_sample_max_len": dataset_sample_max_len,
+            "dataset_sample_min_len": min(len(str(row)) for row in dataset_copy['text']),
+            "dataset_sample_max_len": max(len(str(row)) for row in dataset_copy['text']),
         }
 
 
