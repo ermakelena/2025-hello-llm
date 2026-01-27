@@ -179,30 +179,27 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             dict: Properties of a model
         """
+
+
         model_summary = summary(
-        self._model,
-        input_size=(self._batch_size, self._max_length),
-        device=self._device,
-        verbose=0
-        )
+                self._model,
+                input_size=(self._batch_size, self._max_length),
+                device=self._device,
+                verbose=0
+            )
 
-        # Extract required fields from ModelStatistics
-        input_size = model_summary.input_size[0]  # tuple(batch_size, seq_len)
-        trainable_params_count = model_summary.trainable_params.numel()
-
-        # Extract T5-specific properties from model config and tokenizer
         config = self._model.config
-        tokenizer_config = self._tokenizer
 
         return {
-            "input_shape": list(input_size),  # [batch_size, max_length]
-            "embedding_size": config.d_model,  # 768 for T5
-            "output_shape": [self._batch_size, self._max_length, tokenizer_config.vocab_size],
-            "num_trainable_params": trainable_params_count,
-            "vocab_size": tokenizer_config.vocab_size,  # 32128 for T5
-            "size": model_summary.total_params,  # Total parameters
-            "max_context_length": self._max_length
-        }
+                "input_shape": [self._batch_size, self._max_length],
+                "embedding_size": config.d_model,
+                "output_shape": [self._batch_size, self._max_length, self._tokenizer.vocab_size],
+                "num_trainable_params": int(model_summary.trainable_params),
+                "vocab_size": self._tokenizer.vocab_size,
+                "size": int(model_summary.total_params),
+                "max_context_length": getattr(config, 'max_length', self._max_length)
+            }
+
 
 
 
