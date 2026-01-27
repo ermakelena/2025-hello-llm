@@ -214,22 +214,22 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             str | None: A prediction
         """
-
-        if self._model is None or self._tokenizer is None:
-            return None
-
-        if not sample:
-            return None
-
-        input_text = sample[0]
-
-        inputs = self._tokenizer(input_text, return_tensors="pt")
-        inputs = {key: value.to(self._device) for key, value in inputs.items()}
-
-        with torch.no_grad():
-            generated_ids = self._model.generate(**inputs, max_length=self._max_length)
-
-        return self._tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+        #
+        # if self._model is None or self._tokenizer is None:
+        #     return None
+        #
+        # if not sample:
+        #     return None
+        #
+        # input_text = sample[0]
+        #
+        # inputs = self._tokenizer(input_text, return_tensors="pt")
+        # inputs = {key: value.to(self._device) for key, value in inputs.items()}
+        #
+        # with torch.no_grad():
+        #     generated_ids = self._model.generate(**inputs, max_length=self._max_length)
+        #
+        # return self._tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
 
     @report_time
