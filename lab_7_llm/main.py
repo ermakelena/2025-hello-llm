@@ -10,6 +10,7 @@ from typing import Iterable, Sequence
 
 import pandas as pd
 import torch
+import torchinfo
 from datasets import load_dataset
 from pandas import DataFrame
 from torch.utils.data import Dataset
@@ -180,7 +181,40 @@ class LLMPipeline(AbstractLLMPipeline):
             dict: Properties of a model
         """
 
+        config = self._model.config
+        max_len = self._max_length
 
+        input_ids = torch.ones(1, max_len, dtype=torch.long)
+        attention_mask = torch.ones(1, max_len, dtype=torch.long)
+
+        decoder_input_ids = torch.ones(1, max_len, dtype=torch.long)
+
+        tokens = {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "decoder_input_ids": decoder_input_ids,
+            "use_cache": False
+        }
+
+        stats = summary(self._model, input_data=tokens, device=self._device, verbose=0)
+        # print('input size', stats.input_size)
+        # print('embedding', config.d_model)
+        # print('output_shape', stats.summary_list[-1].output_size)
+        # print('num_trainable_params', stats.trainable_params)
+        # print('vocab_size', config.vocab_size)
+        # print('size', stats.total_param_bytes)
+        # # print('max_context_length', config.max_position_embeddings)
+        # print(list(input_ids.shape))
+
+        return {
+            "input_shape": list(input_ids.shape),
+        "embedding_size": config.d_model,
+        "output_shape": stats.summary_list[-1].output_size,
+        "num_trainable_params": int(stats.trainable_params),
+        "vocab_size": config.vocab_size,
+        "size": int(stats.total_param_bytes),
+        "max_context_length": max_len
+        }
 
 
     @report_time
