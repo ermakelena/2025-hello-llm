@@ -39,29 +39,6 @@ def main() -> None:
 
     assert result is not None, "Demo does not work correctly"
 
-    dataset = TaskDataset(importer.raw_data)
-    pipeline = LLMPipeline(
-        model_name=settings['parameters']['model'],
-        dataset=dataset,
-        max_length=120,
-        batch_size=1,
-        device='cpu'
-    )
-
-    model_properties = pipeline.analyze_model()
-
-    for key, value in model_properties.items():
-        print(f"{key}: {value}")
-
-    sample = dataset[0]
-    input_text = sample[0]
-
-    prediction = pipeline.infer_sample(sample)
-
-    print(f"Generated summary:\n{prediction}\n")
-
-    if len(sample) > 1:
-        print(f"Reference summary:\n{sample[1]}")
 
 
 

@@ -196,12 +196,11 @@ class LLMPipeline(AbstractLLMPipeline):
             "use_cache": False
         }
 
-
         stats = summary(self._model, input_data=tokens, device=self._device, verbose=0)
 
         embedding_size = getattr(config, 'd_model', getattr(config, 'hidden_size', 768))
 
-        return_dict = {
+        return {
             "input_shape": [1, embedding_size],
             "embedding_size": embedding_size,
             "output_shape": [1, embedding_size, config.vocab_size],
@@ -210,8 +209,6 @@ class LLMPipeline(AbstractLLMPipeline):
             "size": int(stats.total_param_bytes),
             "max_context_length": max_context_length
         }
-
-        return return_dict
 
 
     @report_time
@@ -226,8 +223,9 @@ class LLMPipeline(AbstractLLMPipeline):
             str | None: A prediction
         """
 
-        # if self._model is None:
-        #     return None
+        if self._model is None:
+            return None
+
 
 
 
