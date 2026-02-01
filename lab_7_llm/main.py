@@ -8,11 +8,12 @@ from pathlib import Path
 # pylint: disable=too-few-public-methods, undefined-variable, too-many-arguments, super-init-not-called
 from typing import Iterable, Sequence
 
+import evaluate
 import pandas as pd
 import torch
 from datasets import load_dataset
 from pandas import DataFrame
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
@@ -22,7 +23,6 @@ from core_utils.llm.raw_data_importer import AbstractRawDataImporter
 from core_utils.llm.raw_data_preprocessor import AbstractRawDataPreprocessor
 from core_utils.llm.task_evaluator import AbstractTaskEvaluator
 from core_utils.llm.time_decorator import report_time
-import evaluate
 
 
 class RawDataImporter(AbstractRawDataImporter):
@@ -93,6 +93,7 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         processed_dataset = processed_dataset.reset_index(drop=True)
 
         self._data = processed_dataset
+        print(processed_dataset)
 
 
 
@@ -378,5 +379,3 @@ class TaskEvaluator(AbstractTaskEvaluator):
         print(f"Evaluation results: {results}")  # Для отладки
 
         return results
-
-

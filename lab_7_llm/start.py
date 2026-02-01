@@ -3,15 +3,14 @@ Starter for demonstration of laboratory work.
 """
 import json
 from pathlib import Path
-from types import SimpleNamespace
-
+from core_utils.llm.metrics import Metrics
 from lab_7_llm.main import (
     LLMPipeline,
     RawDataImporter,
     RawDataPreprocessor,
     report_time,
     TaskDataset,
-TaskEvaluator,
+    TaskEvaluator,
 )
 
 # pylint: disable=too-many-locals, undefined-variable, unused-import
@@ -56,20 +55,13 @@ def main() -> None:
 
     predictions_df.to_csv(predictions_file, index=False)
 
-    predictions_df.to_csv(predictions_file)
+    metric_names = settings['parameters']['metrics']
+    metrics = [Metrics[metric.upper()] for metric in metric_names]
 
-    evaluator = TaskEvaluator(predictions_file, settings['parameters']['metrics'])
+    evaluator = TaskEvaluator(predictions_file, metrics)
     result = evaluator.run()
-
-    print("Evaluation results:", result)
 
     assert result is not None, "Demo does not work correctly"
 
-
-
-
-
 if __name__ == "__main__":
     main()
-
-
