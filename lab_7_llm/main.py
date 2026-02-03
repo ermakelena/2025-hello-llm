@@ -13,6 +13,7 @@ import pandas as pd
 import torch
 from datasets import load_dataset
 from pandas import DataFrame
+from torch.nn import Module
 from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -196,9 +197,13 @@ class LLMPipeline(AbstractLLMPipeline):
             "use_cache": False
         }
 
+        if not isinstance(self._model, Module):
+            raise ValueError("The model has incompatible type")
+
         stats = summary(self._model, input_data=tokens, device=self._device, verbose=0)
 
-        embedding_size = getattr(self._model.config, 'd_model', getattr(self._model.config, 'hidden_size', 768))
+        embedding_size = getattr(self._model.config, 'd_model',
+                                 getattr(self._model.config, 'hidden_size', 768))
 
         return {
             "input_shape": [1, embedding_size],
@@ -287,7 +292,7 @@ class LLMPipeline(AbstractLLMPipeline):
         """
 
         if not sample_batch or self._model is None:
-            return []
+            raise ValueError("The model is not initialized")
 
         source_texts = [sample[0] for sample in sample_batch]
 
