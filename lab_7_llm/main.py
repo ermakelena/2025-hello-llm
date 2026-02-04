@@ -291,7 +291,7 @@ class LLMPipeline(AbstractLLMPipeline):
             list[str]: Model predictions as strings
         """
 
-        if not sample_batch or self._model is None:
+        if self._model is None:
             raise ValueError("The model is not initialized")
 
         source_texts = [sample[0] for sample in sample_batch]
