@@ -46,7 +46,6 @@ class RawDataImporter(AbstractRawDataImporter):
             raise TypeError("The downloaded dataset is not pd.DataFrame")
 
 
-
 class RawDataPreprocessor(AbstractRawDataPreprocessor):
     """
     A class that analyzes and preprocesses a dataset.
@@ -63,15 +62,17 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         if self._raw_data is None:
             raise ValueError("No data to analyze. Run obtain() first.")
 
-        dataset_copy = self._raw_data.copy().dropna()
+        dataset = self._raw_data.dropna()
 
         return {
             "dataset_number_of_samples": len(self._raw_data),
             "dataset_columns": len(self._raw_data.columns),
             "dataset_duplicates": int(self._raw_data.duplicated().sum()),
             "dataset_empty_rows": self._raw_data.isna().any(axis=1).sum(),
-            "dataset_sample_min_len": min(len(str(row)) for row in dataset_copy['text']),
-            "dataset_sample_max_len": max(len(str(row)) for row in dataset_copy['text']),
+            # "dataset_sample_min_len": min(len(str(row)) for row in dataset['text']),
+            # "dataset_sample_max_len": max(len(str(row)) for row in dataset['text']),
+            "dataset_sample_min_len": dataset['text'].astype(str).str.len().min(axis=0),
+            "dataset_sample_max_len": dataset['text'].astype(str).str.len().max(axis=0),
         }
 
 
@@ -80,8 +81,6 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         """
         Apply preprocessing transformations to the raw dataset.
         """
-
-        #processed_dataset = self._raw_data.copy()
 
         columns_to_drop = ['title', 'date', 'url']
         processed_dataset = self._raw_data.drop(columns=columns_to_drop)
@@ -92,8 +91,6 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         })
 
         self._data = processed_dataset.reset_index(drop=True)
-
-        print(processed_dataset)
 
 
 
@@ -182,8 +179,7 @@ class LLMPipeline(AbstractLLMPipeline):
             dict: Properties of a model
         """
 
-        config = self._model.config
-        max_context_length = config.max_length
+        max_context_length = self._model.config.max_length
 
         input_ids = torch.ones(1, max_context_length, dtype=torch.long)
         attention_mask = torch.ones(1, max_context_length, dtype=torch.long)
@@ -224,22 +220,6 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             str | None: A prediction
         """
-
-        # if self._model is None:
-        #     return None
-        #
-        # tokens = self._tokenizer(
-        #     sample[0],
-        #     return_tensors="pt",
-        #     padding=True,
-        #     truncation=True,
-        #     max_length=self._max_length
-        # )
-        #
-        # with torch.no_grad():
-        #     output = self._model.generate(**tokens)
-        #
-        # return self._tokenizer.decode(output[0], skip_special_tokens=True)
 
         return self._infer_batch([sample])[0]
 
@@ -376,8 +356,6 @@ class TaskEvaluator(AbstractTaskEvaluator):
             )
 
             results["rouge"] = float(rouge_result["rougeL"])
-
-        print(f"Evaluation results: {results}")  # Для отладки
 
         return results
     
