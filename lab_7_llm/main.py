@@ -83,12 +83,9 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         columns_to_drop = ['title', 'date', 'url']
         processed_dataset = self._raw_data.drop(columns=columns_to_drop)
 
-        article = 'article'
-        highlights = 'highlights'
         processed_dataset = processed_dataset.rename(columns={
-            "text": ColumnNames.SOURCE, "summary": ColumnNames.TARGET
-            # "text": "source",
-            # "summary": "target",
+            "text": ColumnNames.SOURCE.value,
+            "summary": ColumnNames.TARGET.value
         })
 
         self._data = processed_dataset.reset_index(drop=True)
