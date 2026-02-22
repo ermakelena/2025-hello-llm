@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from core_utils.llm.metrics import Metrics
-from lab_7_llm.main import (
+from lab_8_sft.main import (
     LLMPipeline,
     RawDataImporter,
     RawDataPreprocessor,
