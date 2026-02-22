@@ -126,7 +126,10 @@ class TaskDataset(Dataset):
         Returns:
             tuple[str, ...]: The item to be received
         """
-        return tuple(self._data.iloc[index])
+        row = self._data.iloc[index]
+        text = row[ColumnNames.SOURCE.value]
+        label = int(row[ColumnNames.TARGET.value])  # Оставляем как int, не преобразуем в строку!
+        return (text, label)
 
 
     @property
@@ -214,7 +217,8 @@ class LLMPipeline(AbstractLLMPipeline):
         """
 
         self._model_name = model_name
-        self._model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        self._model = AutoModelForSequenceClassification.from_pretrained(model_name,
+            num_labels=2)
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self._dataset = dataset
         self._max_length = max_length
@@ -277,15 +281,35 @@ class LLMPipeline(AbstractLLMPipeline):
         if self._model is None:
             return pd.DataFrame()
 
-        dataloader = DataLoader(batch_size=self._batch_size, dataset=self._dataset)
+        dataloader = DataLoader(
+            dataset=self._dataset,
+            batch_size=self._batch_size,
+            shuffle=False
+        )
 
         predictions = []
         targets = []
 
         for batch in dataloader:
-            preds = self._infer_batch(batch[0])
-            targets.extend(batch[1])
-            predictions.extend(preds)
+            texts = batch[0]  # список текстов
+            labels = batch[1]  # список меток
+            print("text:", texts)
+            print("label:", labels)
+            preds = self._infer_batch(texts)
+
+            print("preds:", preds)
+
+            targets.extend([int(label) for label in labels])
+            predictions.extend([int(pred) for pred in preds])
+            print("targets", targets)
+            print("predictions", predictions)
+
+        unique_preds = set(predictions)
+        unique_targets = set(targets)
+        print(f"Unique predictions: {unique_preds}")
+        print(f"Unique targets: {unique_targets}")
+        print(f"Predictions distribution: {pd.Series(predictions).value_counts()}")
+        print(f"Targets distribution: {pd.Series(targets).value_counts()}")
 
         return pd.DataFrame({"target": targets, "predictions": predictions})
 
@@ -352,51 +376,34 @@ class TaskEvaluator(AbstractTaskEvaluator):
         predictions_df = pd.read_csv(self._data_path)
 
         predictions = predictions_df['predictions'].tolist()
-        references = predictions_df['target'].tolist()
-
-        print(predictions)
-        print(references)
+        targets = predictions_df['target'].tolist()
 
         predictions = [int(p) for p in predictions]
 
-        # Clean references - extract numbers from 'tensor(x)'
-        cleaned_references = []
-        for ref in references:
+        cleaned_targets = []
+        for ref in targets:
             ref_str = str(ref)
             if 'tensor(' in ref_str:
-                # Extract number between parentheses
                 start = ref_str.find('(') + 1
                 end = ref_str.find(')')
                 if start > 0 and end > start:
-                    cleaned_references.append(int(ref_str[start:end]))
+                    cleaned_targets.append(int(ref_str[start:end]))
                 else:
-                    cleaned_references.append(int(ref_str.replace('tensor(', '').replace(')', '')))
+                    cleaned_targets.append(int(ref_str.replace('tensor(', '').replace(')', '')))
             else:
-                cleaned_references.append(int(ref_str))
-
-        print(predictions)
-        print(cleaned_references)
-
-        print(f"Type of predictions: {type(predictions)}")
-        print(f"Type of references: {type(cleaned_references)}")
-        print(f"First few predictions: {predictions[:5]}")
-        print(f"First few references: {references[:5]}")
+                cleaned_targets.append(int(ref_str))
 
         result = {}
 
         for metric in self._metrics:
-            if str(metric) == "f1":
-                # Calculate F1 score directly with sklearn
-                f1 = f1_score(cleaned_references, predictions, average="micro")
-                result["f1"] = float(f1)
-            else:
-                # For other metrics, use evaluate library
-                metric_evaluate = load(str(metric))
-                score = metric_evaluate.compute(
-                    predictions=predictions,
-                    references=cleaned_references
-                )
-                result.update(score)
+            metric_evaluate = load(str(metric))
+            score = metric_evaluate.compute(
+                predictions=predictions,
+                references=cleaned_targets,
+                average="micro"
+            )
+
+            result.update(score)
         print(result)
         return result
 
@@ -428,3 +435,4 @@ class SFTPipeline(AbstractSFTPipeline):
         """
         Fine-tune model.
         """
+
