@@ -144,21 +144,41 @@ class TaskDataset(Dataset):
 
 
 
-def tokenize_sample(
-    sample: pd.Series, tokenizer: AutoTokenizer, max_length: int
-) -> dict[str, torch.Tensor]:
-    """
-    Tokenize sample.
+    def tokenize_sample(
+        sample: pd.Series, tokenizer: AutoTokenizer, max_length: int
+    ) -> dict[str, torch.Tensor]:
+        """
+        Tokenize sample.
 
-    Args:
-        sample (pandas.Series): sample from a dataset
-        tokenizer (transformers.models.auto.tokenization_auto.AutoTokenizer): Tokenizer to tokenize
-            original data
-        max_length (int): max length of sequence
+        Args:
+            sample (pandas.Series): sample from a dataset
+            tokenizer (transformers.models.auto.tokenization_auto.AutoTokenizer): Tokenizer to tokenize
+                original data
+            max_length (int): max length of sequence
 
-    Returns:
-        dict[str, torch.Tensor]: Tokenized sample
-    """
+        Returns:
+            dict[str, torch.Tensor]: Tokenized sample
+        """
+        source_tokens = tokenizer(
+            sample[ColumnNames.SOURCE.value],
+            padding="max_length",
+            truncation=True,
+            max_length=120
+        )
+
+        target_tokens = tokenizer(
+            sample[ColumnNames.TARGET.value],
+            padding="max_length",
+            truncation=True,
+            max_length=120
+        )
+        return {
+            "input_ids": source_tokens["input_ids"],
+            "attention_mask": source_tokens["attention_mask"],
+            "labels": target_tokens["input_ids"]
+        }
+
+
 
 
 class TokenizedTaskDataset(Dataset):
@@ -176,6 +196,9 @@ class TokenizedTaskDataset(Dataset):
                 tokenize the dataset
             max_length (int): max length of a sequence
         """
+        self._data = data
+        self._tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+        self._max_length = max_length
 
     def __len__(self) -> int:
         """
@@ -184,6 +207,7 @@ class TokenizedTaskDataset(Dataset):
         Returns:
             int: The number of items in the dataset
         """
+        return len(self._data)
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         """
@@ -195,6 +219,7 @@ class TokenizedTaskDataset(Dataset):
         Returns:
             dict[str, torch.Tensor]: An element from the dataset
         """
+        return dict(self._data[index])
 
 
 class LLMPipeline(AbstractLLMPipeline):
@@ -291,25 +316,13 @@ class LLMPipeline(AbstractLLMPipeline):
         targets = []
 
         for batch in dataloader:
-            texts = batch[0]  # список текстов
-            labels = batch[1]  # список меток
-            print("text:", texts)
-            print("label:", labels)
-            preds = self._infer_batch(texts)
+            texts = batch[0]
+            labels = batch[1]
 
-            print("preds:", preds)
+            preds = self._infer_batch([(text,) for text in texts])
 
             targets.extend([int(label) for label in labels])
             predictions.extend([int(pred) for pred in preds])
-            print("targets", targets)
-            print("predictions", predictions)
-
-        unique_preds = set(predictions)
-        unique_targets = set(targets)
-        print(f"Unique predictions: {unique_preds}")
-        print(f"Unique targets: {unique_targets}")
-        print(f"Predictions distribution: {pd.Series(predictions).value_counts()}")
-        print(f"Targets distribution: {pd.Series(targets).value_counts()}")
 
         return pd.DataFrame({"target": targets, "predictions": predictions})
 
@@ -328,7 +341,6 @@ class LLMPipeline(AbstractLLMPipeline):
             raise ValueError("The model is not initialized")
 
         samples = [sample[0] for sample in sample_batch]
-        print(sample_batch)
 
         tokens = self._tokenizer(
             samples,
@@ -404,7 +416,6 @@ class TaskEvaluator(AbstractTaskEvaluator):
             )
 
             result.update(score)
-        print(result)
         return result
 
 
@@ -435,4 +446,3 @@ class SFTPipeline(AbstractSFTPipeline):
         """
         Fine-tune model.
         """
-

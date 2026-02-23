@@ -27,26 +27,29 @@ def main() -> None:
         settings = json.load(file)
 
     name = settings['parameters']['dataset']
-
-    importer = RawDataImporter(name)
+    importer = RawDataImporter(hf_name=name)
     importer.obtain()
 
-    if importer.raw_data is None:
-        raise ValueError("Failed to obtain raw data")
-
-    preprocessor = RawDataPreprocessor(importer.raw_data)
+    preprocessor = RawDataPreprocessor(raw_data=importer.raw_data)
     result = preprocessor.analyze()
 
-    for key, value in result.items():
-        print(f'{key} : {value}')
+    for parameter, value in result.items():
+        print(f'{parameter} : {value}')
 
     preprocessor.transform()
-    dataset = TaskDataset(preprocessor.data.head(100))
+    dataset = TaskDataset(preprocessor.data.loc[:100])
+    pipeline = LLMPipeline(
+        model_name=settings['parameters']['model'],
+        dataset=dataset,
+        max_length=120,
+        batch_size=1,
+        device='cpu'
+    )
+    model_analysis = pipeline.analyze_model()
+    for parameter, value in model_analysis.items():
+        print(f'{parameter} : {value}')
 
-    pipeline = LLMPipeline(settings['parameters']['model'], dataset, 120, 1, 'cpu')
-
-    for key, value in pipeline.analyze_model().items():
-        print(f'{key}: {value}')
+    print(pipeline.infer_sample(dataset[0]))
 
     predictions_df = pipeline.infer_dataset()
 
@@ -61,6 +64,7 @@ def main() -> None:
 
     evaluator = TaskEvaluator(predictions_file, metrics)
     result = evaluator.run()
+
     assert result is not None, "Fine-tuning does not work correctly"
 
 
