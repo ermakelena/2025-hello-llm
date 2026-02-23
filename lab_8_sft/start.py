@@ -16,6 +16,7 @@ from lab_8_sft.main import (
     TaskEvaluator,
 )
 
+
 @report_time
 def main() -> None:
     """
