@@ -145,18 +145,18 @@ class TaskDataset(Dataset):
 def tokenize_sample(
         sample: pd.Series, tokenizer: AutoTokenizer, max_length: int
     ) -> dict[str, torch.Tensor]:
-        """
-        Tokenize sample.
+    """
+    Tokenize sample.
 
-        Args:
-            sample (pandas.Series): sample from a dataset
-            tokenizer (transformers.models.auto.tokenization_auto.AutoTokenizer): Tokenizer to tokenize
-                original data
-            max_length (int): max length of sequence
+    Args:
+        sample (pandas.Series): sample from a dataset
+        tokenizer (transformers.models.auto.tokenization_auto.AutoTokenizer): Tokenizer to tokenize
+            original data
+        max_length (int): max length of sequence
 
-        Returns:
-            dict[str, torch.Tensor]: Tokenized sample
-        """
+    Returns:
+        dict[str, torch.Tensor]: Tokenized sample
+    """
 
 
 class TokenizedTaskDataset(Dataset):
